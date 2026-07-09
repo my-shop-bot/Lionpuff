@@ -38,7 +38,7 @@ last_order_time: dict[int, datetime] = {}
 # Разбито на 2 серии, как в твоём списке. Просто отредактируй строки при необходимости.
 CATEGORIES = {
     "s1": {
-        "title": "Vozol STAR 40k",
+        "title": "Vozol STAR 40k — 20€",
         "items": [
             "Cool Mint — Холодная Мята ❄️🌿",
             "Watermelon Sour Peach — Арбуз Кислый Персик 🍉🍑",
@@ -62,7 +62,7 @@ CATEGORIES = {
         ],
     },
     "s2": {
-        "title": "Vozol STAR 50k",
+        "title": "Vozol STAR 50k — 25€",
         "items": [
             "Watermelon Gum — Арбузная Жвачка 🍉🟢",
             "Tiger Blood — Кровь Тигра 🐅❤️",
