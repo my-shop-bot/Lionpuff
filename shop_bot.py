@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
@@ -27,11 +28,41 @@ if not ADMIN_CHAT_ID:
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
 
+# ==== Антиспам: минимальный интервал между заказами одного пользователя (в минутах) ====
+ORDER_COOLDOWN_MINUTES = int(os.getenv("ORDER_COOLDOWN_MINUTES", "30"))
+
+# user_id -> datetime последнего оформленного заказа (хранится в памяти, сбрасывается при рестарте бота)
+last_order_time: dict[int, datetime] = {}
+
 # ==== Каталог товаров: отредактируй под себя ====
 # Разбито на 2 серии, как в твоём списке. Просто отредактируй строки при необходимости.
 CATEGORIES = {
     "s1": {
         "title": "Vozol STAR 40k",
+        "items": [
+            "Cool Mint — Холодная Мята ❄️🌿",
+            "Watermelon Sour Peach — Арбуз Кислый Персик 🍉🍑",
+            "Watermelon Grape Boysenberry — Арбуз Виноград Бойзенберри 🍉🍇",
+            "Blue Razz Ice — Голубая Малина Лёд 🔵❄️",
+            "Cherimoya Grapefruit Berries — Черимойя Грейпфрут Ягоды 🍈🍊",
+            "Strawmelon Peach — Клубарбуз Персик 🍓🍉🍑",
+            "Strawberry Ice — Клубничный Лёд 🍓❄️",
+            "Strawberry Watermelon — Клубника Арбуз 🍓🍉",
+            "Vzbull — Vzbull ⚡🐂",
+            "Sour Apple Ice — Кислое Яблоко Лёд 🍏❄️",
+            "White Peach Raspberry — Белый Персик Малина 🍑🍓",
+            "Strawberry Kiwi — Клубника Киви 🍓🥝",
+            "Blueberry Ice — Черничный Лёд 🫐❄️",
+            "Blueberry Mint — Черника Мята 🫐🌿",
+            "Mango Ice — Манго Лёд 🥭❄️",
+            "Peach Ice — Персиковый Лёд 🍑❄️",
+            "Mango Peach — Манго Персик 🥭🍑",
+            "Melon Ice — Дынный Лёд 🍈❄️",
+            "Melon Gum — Дынная Жвачка 🍈🟢",
+        ],
+    },
+    "s2": {
+        "title": "Vozol STAR 50k",
         "items": [
             "Watermelon Gum — Арбузная Жвачка 🍉🟢",
             "Tiger Blood — Кровь Тигра 🐅❤️",
@@ -53,30 +84,6 @@ CATEGORIES = {
             "Love 777 — Любовь 777 ❤️✨",
             "Raspberry Watermelon — Малина Арбуз 🍓🍉",
             "Mixed Berry — Ягодный Микс 🫐🍓",
-        ],
-    },
-    "s2": {
-        "title": "Vozol STAR 50k",
-        "items": [
-            "Cool Mint — Холодная Мята ❄️🌿",
-            "Watermelon Sour Peach — Арбуз Кислый Персик 🍉🍑",
-            "Watermelon Grape Boysenberry — Арбуз Виноград Бойзенберри 🍉🍇",
-            "Blue Razz Ice — Голубая Малина Лёд 🔵❄️",
-            "Cherimoya Grapefruit Berries — Черимойя Грейпфрут Ягоды 🍈🍊",
-            "Strawmelon Peach — Клубарбуз Персик 🍓🍉🍑",
-            "Strawberry Ice — Клубничный Лёд 🍓❄️",
-            "Strawberry Watermelon — Клубника Арбуз 🍓🍉",
-            "Vzbull — Vzbull ⚡🐂",
-            "Sour Apple Ice — Кислое Яблоко Лёд 🍏❄️",
-            "White Peach Raspberry — Белый Персик Малина 🍑🍓",
-            "Strawberry Kiwi — Клубника Киви 🍓🥝",
-            "Blueberry Ice — Черничный Лёд 🫐❄️",
-            "Blueberry Mint — Черника Мята 🫐🌿",
-            "Mango Ice — Манго Лёд 🥭❄️",
-            "Peach Ice — Персиковый Лёд 🍑❄️",
-            "Mango Peach — Манго Персик 🥭🍑",
-            "Melon Ice — Дынный Лёд 🍈❄️",
-            "Melon Gum — Дынная Жвачка 🍈🟢",
         ],
     },
 }
@@ -170,6 +177,19 @@ async def start_order(callback: CallbackQuery, state: FSMContext):
         await callback.answer("Товар не найден", show_alert=True)
         return
 
+    user_id = callback.from_user.id
+    last_time = last_order_time.get(user_id)
+    if last_time:
+        elapsed = datetime.now() - last_time
+        remaining = timedelta(minutes=ORDER_COOLDOWN_MINUTES) - elapsed
+        if remaining.total_seconds() > 0:
+            minutes_left = int(remaining.total_seconds() // 60) + 1
+            await callback.answer(
+                f"Вы недавно уже оформляли заказ. Подождите ещё ~{minutes_left} мин.",
+                show_alert=True,
+            )
+            return
+
     await state.update_data(product_name=name)
     await state.set_state(Order.waiting_name)
     await callback.message.answer("Как к вам обращаться? Напишите имя:")
@@ -205,6 +225,7 @@ async def get_place(message: Message, state: FSMContext):
     )
 
     await bot.send_message(ADMIN_CHAT_ID, order_text)
+    last_order_time[message.from_user.id] = datetime.now()
     await message.answer("Спасибо! Заказ принят, с вами свяжутся для подтверждения встречи.")
     await state.clear()
 
