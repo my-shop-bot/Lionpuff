@@ -31,7 +31,7 @@ dp = Dispatcher(storage=MemoryStorage())
 # Разбито на 2 серии, как в твоём списке. Просто отредактируй строки при необходимости.
 CATEGORIES = {
     "s1": {
-        "title": "Серия 1",
+        "title": "Vozol STAR 40k",
         "items": [
             "Watermelon Gum — Арбузная Жвачка 🍉🟢",
             "Tiger Blood — Кровь Тигра 🐅❤️",
@@ -56,7 +56,7 @@ CATEGORIES = {
         ],
     },
     "s2": {
-        "title": "Серия 2",
+        "title": "Vozol STAR 50k",
         "items": [
             "Cool Mint — Холодная Мята ❄️🌿",
             "Watermelon Sour Peach — Арбуз Кислый Персик 🍉🍑",
